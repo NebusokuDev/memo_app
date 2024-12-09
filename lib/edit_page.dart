@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -9,18 +10,20 @@ class EditPage extends StatefulWidget {
 }
 
 class _EditPageState extends State<EditPage> {
-  late TextEditingController controller;
+  late TextEditingController memoController;
+  late TextEditingController titleController;
   bool isEditing = false;
 
   @override
   void initState() {
     super.initState();
-    controller = TextEditingController();
+    memoController = TextEditingController();
+    titleController = TextEditingController(text: "Memo");
   }
 
   @override
   void dispose() {
-    controller.dispose();
+    memoController.dispose();
     super.dispose();
   }
 
@@ -32,10 +35,12 @@ class _EditPageState extends State<EditPage> {
     final isMobile = screen.width < 1000;
     return isMobile
         ? MobileEditLayout(
-            controller: controller,
+            titleController: titleController,
+            textController: memoController,
           )
         : DesktopEditLayout(
-            controller: controller,
+            textController: memoController,
+            titleController: titleController,
           );
   }
 }
@@ -43,26 +48,36 @@ class _EditPageState extends State<EditPage> {
 class MobileEditLayout extends StatelessWidget {
   const MobileEditLayout({
     super.key,
-    required this.controller,
+    required this.textController,
+    required this.titleController,
   });
 
-  final TextEditingController controller;
+  final TextEditingController textController;
+  final TextEditingController titleController;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
-        title: Text("Memo"),
+        title: SizedBox(
+          width: 400,
+          child: TextField(
+            controller: titleController,
+            textAlign: TextAlign.center,
+            textAlignVertical: TextAlignVertical.center,
+            decoration: const InputDecoration.collapsed(hintText: ""),
+          ),
+        ),
         actions: [
-          Padding(
+          const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16),
             child: AccountButton(),
           ),
         ],
       ),
       body: EditorBody(
-        controller: TextEditingController(),
+        controller: textController,
       ),
       drawer: Drawer(
         child: SideMenuBody(
@@ -76,17 +91,19 @@ class MobileEditLayout extends StatelessWidget {
 class DesktopEditLayout extends StatefulWidget {
   const DesktopEditLayout({
     super.key,
-    required this.controller,
+    required this.textController,
+    required this.titleController,
   });
 
-  final TextEditingController controller;
+  final TextEditingController textController;
+  final TextEditingController titleController;
 
   @override
   State<DesktopEditLayout> createState() => _DesktopEditLayoutState();
 }
 
 class _DesktopEditLayoutState extends State<DesktopEditLayout> {
-  bool expandSideMenu = true;
+  static bool expandSideMenu = true;
 
   void toggleSideMenu() => setState(() => expandSideMenu = !expandSideMenu);
 
@@ -100,7 +117,7 @@ class _DesktopEditLayoutState extends State<DesktopEditLayout> {
             duration: const Duration(milliseconds: 150),
             curve: Curves.easeOut,
             child: Padding(
-              padding: EdgeInsets.all(8.0),
+              padding: const EdgeInsets.all(8.0),
               child: Card(
                 elevation: 5,
                 child: expandSideMenu
@@ -119,15 +136,23 @@ class _DesktopEditLayoutState extends State<DesktopEditLayout> {
                     onPressed: toggleSideMenu,
                     icon: const Icon(Icons.menu),
                   ),
-                  title: Text("Memo"),
+                  title: SizedBox(
+                    width: 400,
+                    child: TextField(
+                      controller: widget.titleController,
+                      textAlignVertical: TextAlignVertical.center,
+                      textAlign: TextAlign.center,
+                      decoration: InputDecoration.collapsed(hintText: ""),
+                    ),
+                  ),
                   actions: [
-                    AccountButton(),
+                    const AccountButton(),
                   ],
                   centerTitle: true,
                 ),
                 Expanded(
                   child: EditorBody(
-                    controller: widget.controller,
+                    controller: widget.textController,
                   ),
                 ),
               ],
@@ -154,7 +179,7 @@ class EditorBody extends StatelessWidget {
       child: TextField(
         controller: controller,
         maxLines: 999,
-        decoration: InputDecoration.collapsed(hintText: null),
+        decoration: const InputDecoration.collapsed(hintText: null),
       ),
     );
   }
@@ -187,7 +212,6 @@ class SideMenuBody extends StatelessWidget {
             itemBuilder: (context, index) => ListTile(
               title: Text(items[index].title ?? "undefined"),
               subtitle: Text(items[index].lastEditingDate?.toString() ?? ""),
-              onTap: () => print("Tapped: ${items[index]}"),
             ),
           ),
         ),
@@ -218,13 +242,24 @@ class AccountButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isLogin = FirebaseAuth.instance.currentUser != null;
+
     return PopupMenuButton(
       itemBuilder: (context) => [
-        PopupMenuItem(
-          onTap: () => context.go("/login"),
-          child: const Text("ログイン"),
-        ),
-        PopupMenuItem(child: Text("設定")),
+        if (isLogin == false)
+          PopupMenuItem(
+            onTap: () => context.go("/login"),
+            child: const Text("ログイン"),
+          )
+        else
+          PopupMenuItem(
+            onTap: () async {
+              await FirebaseAuth.instance.signOut();
+              context.go("/");
+            },
+            child: const Text("ログアウト"),
+          ),
+        const PopupMenuItem(child: Text("設定")),
       ],
       child: const CircleAvatar(),
     );
@@ -233,9 +268,10 @@ class AccountButton extends StatelessWidget {
 
 class MemoData {
   final String? title;
+  final String? text;
   final DateTime? lastEditingDate;
 
-  MemoData({this.title, this.lastEditingDate});
+  MemoData({this.text, this.title, this.lastEditingDate});
 }
 
 final dummyData = <MemoData>[
@@ -246,5 +282,25 @@ final dummyData = <MemoData>[
   MemoData(),
   MemoData(),
   MemoData(),
-  MemoData()
+  MemoData(),
+  MemoData(),
+  MemoData(),
+  MemoData(),
+  MemoData(),
+  MemoData(),
+  MemoData(),
+  MemoData(),
+  MemoData(),
+  MemoData(),
+  MemoData(),
+  MemoData(),
+  MemoData(),
+  MemoData(),
+  MemoData(),
+  MemoData(),
+  MemoData(),
+  MemoData(),
+  MemoData(),
+  MemoData(),
+  MemoData(),
 ];

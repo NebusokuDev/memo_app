@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -10,10 +11,64 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   bool showPassword = false;
+  late TextEditingController _emailController;
+  late TextEditingController _passwordController;
 
-  void toggleVisiblePassword() {
-    setState(() => showPassword = !showPassword);
+  @override
+  void initState() {
+    super.initState();
+    _emailController = TextEditingController();
+    _passwordController = TextEditingController();
   }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  void toggleVisiblePassword() => setState(() => showPassword = !showPassword);
+
+  final _formKey = GlobalKey<FormState>();
+
+  String? validateEmail(String? email) {
+    if (email?.isEmpty ?? true) return "メールアドレスを入力してください";
+
+    final regex = RegExp(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$");
+    if (email != null && !regex.hasMatch(email)) return "有効なメールアドレスを入力してください";
+
+    return null;
+  }
+
+  void _login(BuildContext context) async {
+    final isValid = _formKey.currentState?.validate() ?? false;
+
+    if (isValid == false) return;
+
+    print(_emailController.text);
+    print(_passwordController.text);
+
+    try {
+      final auth = FirebaseAuth.instance;
+      await auth.signInWithEmailAndPassword(
+        email: _emailController.text,
+        password: _passwordController.text,
+      );
+
+      await auth.setPersistence(
+        _keepLoggedIn ? Persistence.LOCAL : Persistence.SESSION,
+      );
+
+      context.go("/");
+    } on FirebaseException catch (err) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('ログインに失敗しました${err.code}')),
+      );
+    }
+  }
+
+  bool _keepLoggedIn = true;
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +84,7 @@ class _LoginPageState extends State<LoginPage> {
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: 1000),
+            constraints: const BoxConstraints(maxWidth: 1000),
             child: SizedBox(
               child: Column(
                 children: [
@@ -41,12 +96,14 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ),
                   Form(
+                    key: _formKey,
                     child: SizedBox(
                       height: 350,
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
                           TextFormField(
+                            validator: validateEmail,
                             decoration: const InputDecoration(
                               labelText: "メールアドレス",
                               prefixIcon: Icon(Icons.email),
@@ -57,7 +114,7 @@ class _LoginPageState extends State<LoginPage> {
                           TextFormField(
                             decoration: InputDecoration(
                               labelText: "パスワード",
-                              prefixIcon: Icon(Icons.key),
+                              prefixIcon: const Icon(Icons.key),
                               suffixIcon: IconButton(
                                 onPressed: toggleVisiblePassword,
                                 icon: Icon(
@@ -66,7 +123,7 @@ class _LoginPageState extends State<LoginPage> {
                                       : Icons.visibility_off,
                                 ),
                               ),
-                              border: OutlineInputBorder(),
+                              border: const OutlineInputBorder(),
                             ),
                             obscureText: !showPassword,
                           ),
@@ -78,10 +135,13 @@ class _LoginPageState extends State<LoginPage> {
                               return Row(
                                 children: [
                                   Checkbox(
-                                    value: state.value,
-                                    onChanged: state.didChange,
+                                    value: _keepLoggedIn,
+                                    onChanged: (value) {
+                                      setState(
+                                          () => _keepLoggedIn = value ?? false);
+                                    },
                                   ),
-                                  Text("ログインしたままにする"),
+                                  const Text("ログインしたままにする"),
                                 ],
                               );
                             },
@@ -98,7 +158,8 @@ class _LoginPageState extends State<LoginPage> {
                             width: double.infinity,
                             height: 50,
                             child: FilledButton(
-                              onPressed: () => context.go("/"),
+                              onPressed: () =>
+                                  print("${_emailController.text}"),
                               child: const Text("ログイン"),
                             ),
                           ),

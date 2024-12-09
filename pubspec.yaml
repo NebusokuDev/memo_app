@@ -1,5 +1,5 @@
 name: memo_app
-description: "A new Flutter project."
+description: "Simple memo application project"
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -8,10 +8,11 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  cupertino_icons: ^1.0.8
   go_router:
-  flutter_markdown:
-  flutter_quill:
+  firebase_auth:
+  cloud_firestore:
+  firebase_core:
+  shared_preferences:
 
 dev_dependencies:
   flutter_test:
